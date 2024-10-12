@@ -7,16 +7,16 @@ import (
 type EventType string
 
 const (
-	EventTypeLecture EventType = "lecture"
-	EventTypeSeminar EventType = "seminar"
-	EventTypeLab     EventType = "lab"
+	EventTypeLecture EventType = "лекции"
+	EventTypeSeminar EventType = "семинар"
+	EventTypeLab     EventType = "лабораторные занятия"
 )
 
 type EventSubgroup string
 
 const (
-	EventSubgroupA EventSubgroup = "A"
-	EventSubgroupB EventSubgroup = "B"
+	EventSubgroupA EventSubgroup = "А"
+	EventSubgroupB EventSubgroup = "Б"
 )
 
 type Event struct {
@@ -28,12 +28,12 @@ type Event struct {
 	Dates    []EventDate   `json:"dates"`
 }
 
-type EventFrequency string
+type EventFrequency int
 
 const (
-	EventFrequencyOnce     EventFrequency = "once"
-	EventFrequencyWeekly   EventFrequency = "weekly"
-	EventFrequencyBiweekly EventFrequency = "biweekly"
+	EventFrequencyOnce     EventFrequency = iota
+	EventFrequencyWeekly                  // к.н.
+	EventFrequencyBiweekly                // ч.н.
 )
 
 type EventDate struct {

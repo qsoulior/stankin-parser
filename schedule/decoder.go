@@ -6,7 +6,7 @@ type Meta struct {
 	Group string
 }
 
-func DecodeMeta(chunks []Chunk) (Meta, int) {
+func decodeMeta(chunks []Chunk) (Meta, int) {
 	i := 1
 	for chunks[i].Y == chunks[i-1].Y && i < len(chunks) {
 		i++
@@ -22,7 +22,7 @@ func DecodeMeta(chunks []Chunk) (Meta, int) {
 		Group: data.String(),
 	}
 
-	for chunks[i].X < 46 || chunks[i].Y > 510 && i < len(chunks) {
+	for chunks[i].X < 42 || chunks[i].Y > 520 && i < len(chunks) {
 		i++
 	}
 
@@ -34,13 +34,18 @@ type Cell struct {
 	Left, Right, Top, Bottom int
 }
 
-func DecodeCell(chunks []Chunk) (Cell, int) {
+func decodeCell(chunks []Chunk) (Cell, int) {
 	var data strings.Builder
 	data.Grow(len(chunks[0].Data))
 	data.WriteString(chunks[0].Data)
 
 	i := 1
+	iMax := 0
 	for chunks[i-1].Data != "]" && i < len(chunks) {
+		if chunks[i].X > chunks[iMax].X {
+			iMax = i
+		}
+
 		if chunks[i].Y != chunks[i-1].Y {
 			data.WriteRune(' ')
 		}
@@ -52,22 +57,22 @@ func DecodeCell(chunks []Chunk) (Cell, int) {
 		Data:   data.String(),
 		Left:   chunks[0].X,
 		Top:    chunks[0].Y,
-		Right:  chunks[i-1].X,
+		Right:  chunks[iMax].X,
 		Bottom: chunks[i-1].Y,
 	}
 
 	return cell, i
 }
 
-func DecodeData(chunks []Chunk) ([]Cell, Meta) {
+func Decode(chunks []Chunk) ([]Cell, Meta) {
 	// Decode meta.
-	meta, size := DecodeMeta(chunks)
+	meta, size := decodeMeta(chunks)
 	chunks = chunks[size:]
 
 	// Decode cells.
 	cells := make([]Cell, 0)
 	for len(chunks) > 0 {
-		cell, size := DecodeCell(chunks)
+		cell, size := decodeCell(chunks)
 		cells = append(cells, cell)
 		chunks = chunks[size:]
 	}
