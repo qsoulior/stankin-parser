@@ -19,6 +19,16 @@ const (
 	EventSubgroupB EventSubgroup = "Б"
 )
 
+type EventTime struct {
+	Start time.Duration `json:"start"`
+	End   time.Duration `json:"end"`
+}
+
+type EventDate struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
 type Event struct {
 	Title    string        `json:"title"`
 	Teacher  string        `json:"teacher"`
@@ -26,18 +36,4 @@ type Event struct {
 	Subgroup EventSubgroup `json:"subgroup"`
 	Location string        `json:"location"`
 	Dates    []EventDate   `json:"dates"`
-}
-
-type EventFrequency int
-
-const (
-	EventFrequencyOnce     EventFrequency = iota
-	EventFrequencyWeekly                  // к.н.
-	EventFrequencyBiweekly                // ч.н.
-)
-
-type EventDate struct {
-	Start     time.Time      `json:"start"`
-	End       time.Time      `json:"end"`
-	Frequency EventFrequency `json:"frequency"`
 }

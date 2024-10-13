@@ -15,59 +15,49 @@ var (
 	ErrEventFrequencyInvalid = errors.New("event frequency is invalid")
 )
 
-type EventClock struct {
-	hour int
-	min  int
-}
-
-type EventTime struct {
-	start EventClock
-	end   EventClock
-}
-
-func parseTimeStart(pos int) (EventClock, error) {
+func parseTimeStart(pos int) (time.Duration, error) {
 	switch {
 	case pos >= 701:
-		return EventClock{21, 20}, nil
+		return 21*time.Hour + 20*time.Minute, nil
 	case pos >= 607:
-		return EventClock{19, 40}, nil
+		return 19*time.Hour + 40*time.Minute, nil
 	case pos >= 514:
-		return EventClock{18, 0}, nil
+		return 18 * time.Hour, nil
 	case pos >= 420:
-		return EventClock{16, 0}, nil
+		return 16 * time.Hour, nil
 	case pos >= 327:
-		return EventClock{14, 10}, nil
+		return 14*time.Hour + 10*time.Minute, nil
 	case pos >= 233:
-		return EventClock{12, 20}, nil
+		return 12*time.Hour + 20*time.Minute, nil
 	case pos >= 139:
-		return EventClock{10, 20}, nil
+		return 10*time.Hour + 20*time.Minute, nil
 	case pos >= 46:
-		return EventClock{8, 30}, nil
+		return 8*time.Hour + 30*time.Minute, nil
 	default:
-		return EventClock{}, errors.New("event start is invalid")
+		return 0, errors.New("event start is invalid")
 	}
 }
 
-func parseTimeEnd(pos int) (EventClock, error) {
+func parseTimeEnd(pos int) (time.Duration, error) {
 	switch {
 	case pos < 46:
-		return EventClock{}, errors.New("event end is invalid")
+		return 0, errors.New("event end is invalid")
 	case pos < 139:
-		return EventClock{10, 10}, nil
+		return 10*time.Hour + 10*time.Minute, nil
 	case pos < 233:
-		return EventClock{12, 0}, nil
+		return 12 * time.Hour, nil
 	case pos < 327:
-		return EventClock{14, 0}, nil
+		return 14 * time.Hour, nil
 	case pos < 420:
-		return EventClock{15, 50}, nil
+		return 15*time.Hour + 50*time.Minute, nil
 	case pos < 514:
-		return EventClock{17, 40}, nil
+		return 17*time.Hour + 40*time.Minute, nil
 	case pos < 607:
-		return EventClock{19, 30}, nil
+		return 19*time.Hour + 30*time.Minute, nil
 	case pos < 701:
-		return EventClock{21, 10}, nil
+		return 21*time.Hour + 10*time.Minute, nil
 	default:
-		return EventClock{22, 50}, nil
+		return 22*time.Hour + 50*time.Minute, nil
 	}
 }
 
@@ -75,12 +65,12 @@ func parseTime(left, right int) (EventTime, error) {
 	var time EventTime
 	var err error
 
-	time.start, err = parseTimeStart(left)
+	time.Start, err = parseTimeStart(left)
 	if err != nil {
 		return time, err
 	}
 
-	time.end, err = parseTimeEnd(right)
+	time.End, err = parseTimeEnd(right)
 	if err != nil {
 		return time, err
 	}
@@ -92,58 +82,53 @@ const dateLayout = "02.01"
 
 var dateLocation = time.FixedZone("UTC+3", 3*60*60)
 
-func parseDate(data string, year int, offset EventTime) (EventDate, error) {
-	var (
-		date       EventDate
-		err        error
-		start, end string
-	)
+var dateWeeks = map[string]int{
+	"":     0,
+	"к.н.": 1,
+	"ч.н.": 2,
+}
 
-	splitDate := strings.FieldsFunc(data, func(r rune) bool {
+func parseDate(data string, year int, t EventTime) ([]EventDate, error) {
+	parts := make([]string, 3)
+	copy(parts, strings.FieldsFunc(data, func(r rune) bool {
 		return r == '-' || r == ' '
-	})
+	}))
 
-	switch len(splitDate) {
-	case 1:
-		date.Frequency = EventFrequencyOnce
-		start = splitDate[0]
-		end = splitDate[0]
-	case 3:
-		switch splitDate[2] {
-		case "к.н.":
-			date.Frequency = EventFrequencyWeekly
-		case "ч.н.":
-			date.Frequency = EventFrequencyBiweekly
-		default:
-			return date, ErrEventFrequencyInvalid
+	weeks, ok := dateWeeks[parts[2]]
+	if !ok {
+		return nil, ErrEventFrequencyInvalid
+	}
+
+	start, err := time.ParseInLocation(dateLayout, parts[0], dateLocation)
+	if err != nil {
+		return nil, ErrEventDateInvalid
+	}
+	start = start.AddDate(year, 0, 0)
+
+	if weeks > 0 {
+		end, err := time.ParseInLocation(dateLayout, parts[1], dateLocation)
+		if err != nil {
+			return nil, ErrEventDateInvalid
+		}
+		end = end.AddDate(year, 0, 0)
+
+		dates := make([]EventDate, 0)
+		for date := start; !date.After(end); date = date.AddDate(0, 0, 7*weeks) {
+			dates = append(dates, EventDate{
+				Start: date.Add(t.Start),
+				End:   date.Add(t.End)},
+			)
 		}
 
-		start = splitDate[0]
-		end = splitDate[1]
-	default:
-		return date, ErrEventDateInvalid
+		return dates, nil
 	}
 
-	date.Start, err = time.ParseInLocation(dateLayout, start, dateLocation)
-	if err != nil {
-		return date, ErrEventDateInvalid
+	date := EventDate{
+		Start: start.Add(t.Start),
+		End:   start.Add(t.End),
 	}
 
-	date.End, err = time.ParseInLocation(dateLayout, end, dateLocation)
-	if err != nil {
-		return date, ErrEventDateInvalid
-	}
-
-	// Normalize date.
-	date.Start = date.Start.
-		AddDate(year, 0, 0).
-		Add(time.Hour*time.Duration(offset.start.hour) + time.Minute*time.Duration(offset.start.min))
-
-	date.End = date.End.
-		AddDate(year, 0, 0).
-		Add(time.Hour*time.Duration(offset.end.hour) + time.Minute*time.Duration(offset.end.min))
-
-	return date, nil
+	return []EventDate{date}, nil
 }
 
 func parse(cell Cell, year int) (Event, error) {
@@ -189,13 +174,12 @@ func parse(cell Cell, year int) (Event, error) {
 
 	// Parse dates.
 	parts := strings.Split(strings.Trim(suffix[len(suffix)-1], "[]"), ", ")
-	event.Dates = make([]EventDate, len(parts))
-
-	for i, part := range parts {
-		event.Dates[i], err = parseDate(part, year, time)
+	for _, part := range parts {
+		dates, err := parseDate(part, year, time)
 		if err != nil {
 			return event, err
 		}
+		event.Dates = append(event.Dates, dates...)
 	}
 
 	// Parse subgroup and location.
@@ -209,6 +193,7 @@ func parse(cell Cell, year int) (Event, error) {
 	return event, nil
 }
 
+// cells + year -> events
 func Parse(cells []Cell, year int) ([]Event, error) {
 	var err error
 
