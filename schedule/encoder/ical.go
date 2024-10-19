@@ -21,13 +21,13 @@ const (
 	icalLayoutUTC   = "20060102T150405Z"
 )
 
-type icale struct {
+type icalEncoder struct {
 	w io.Writer
 }
 
-func NewIcal(w io.Writer) *icale { return &icale{w} }
+func NewIcal(w io.Writer) Encoder { return &icalEncoder{w} }
 
-func (e *icale) Encode(events []schedule.Event, group string, subgroup schedule.EventSubgroup) {
+func (e *icalEncoder) Encode(events []schedule.Event, group string, subgroup schedule.EventSubgroup) error {
 	fmt.Fprint(e.w, "BEGIN:VCALENDAR\n")
 
 	fmt.Fprintf(e.w, "PRODID:%s\n", icalProductID)
@@ -40,15 +40,16 @@ func (e *icale) Encode(events []schedule.Event, group string, subgroup schedule.
 
 	for _, event := range events {
 		if subgroup == "" || event.Subgroup == "" || subgroup == event.Subgroup {
-			e.serializeOne(event)
+			e.encodeEvent(event)
 			fmt.Fprint(e.w, "\n")
 		}
 	}
 
 	fmt.Fprint(e.w, "END:VCALENDAR\n")
+	return nil
 }
 
-func (e *icale) serializeOne(event schedule.Event) {
+func (e *icalEncoder) encodeEvent(event schedule.Event) {
 	fmt.Fprint(e.w, "BEGIN:VEVENT\n")
 
 	fmt.Fprintf(e.w, "UID:%s\n", uuid.New())

@@ -8,15 +8,18 @@ import (
 	"github.com/qsoulior/stankin-parser/schedule"
 )
 
-const PageNum = 1
+const PdfPageNum = 1
 
-type Chunk struct {
-	Data string
-	X    int
-	Y    int
+type pdfDecoder struct {
+	r    io.ReaderAt
+	size int64
 }
 
-func decodeMeta(chunks []Chunk) (*schedule.Meta, int) {
+func NewPDF(r io.ReaderAt, size int64) *pdfDecoder {
+	return &pdfDecoder{r, size}
+}
+
+func (d *pdfDecoder) decodeMeta(chunks []pdf.Text) (*schedule.Meta, int) {
 	i := 1
 	for chunks[i].Y == chunks[i-1].Y && i < len(chunks) {
 		i++
@@ -25,7 +28,7 @@ func decodeMeta(chunks []Chunk) (*schedule.Meta, int) {
 	var data strings.Builder
 	data.Grow(i - 1)
 	for j := 0; j < i; j++ {
-		data.WriteString(chunks[j].Data)
+		data.WriteString(chunks[j].S)
 	}
 
 	meta := schedule.Meta{
@@ -39,14 +42,14 @@ func decodeMeta(chunks []Chunk) (*schedule.Meta, int) {
 	return &meta, i
 }
 
-func decodeCell(chunks []Chunk) (schedule.Cell, int) {
+func (d *pdfDecoder) decodeCell(chunks []pdf.Text) (schedule.Cell, int) {
 	var data strings.Builder
-	data.Grow(len(chunks[0].Data))
-	data.WriteString(chunks[0].Data)
+	data.Grow(len(chunks[0].S))
+	data.WriteString(chunks[0].S)
 
 	i := 1
 	iMax := 0
-	for chunks[i-1].Data != "]" && i < len(chunks) {
+	for chunks[i-1].S != "]" && i < len(chunks) {
 		if chunks[i].X > chunks[iMax].X {
 			iMax = i
 		}
@@ -54,56 +57,38 @@ func decodeCell(chunks []Chunk) (schedule.Cell, int) {
 		if chunks[i].Y != chunks[i-1].Y {
 			data.WriteRune(' ')
 		}
-		data.WriteString(chunks[i].Data)
+		data.WriteString(chunks[i].S)
 		i++
 	}
 
 	cell := schedule.Cell{
 		Data:   data.String(),
-		Left:   chunks[0].X,
-		Top:    chunks[0].Y,
-		Right:  chunks[iMax].X,
-		Bottom: chunks[i-1].Y,
+		Left:   int(chunks[0].X),
+		Top:    int(chunks[0].Y),
+		Right:  int(chunks[iMax].X),
+		Bottom: int(chunks[i-1].Y),
 	}
 
 	return cell, i
 }
 
-type pdfe struct {
-	r    io.ReaderAt
-	size int64
-}
-
-func NewPDF(r io.ReaderAt, size int64) *pdfe {
-	return &pdfe{r, size}
-}
-
-func (d *pdfe) Decode() ([]schedule.Cell, *schedule.Meta, error) {
+func (d *pdfDecoder) Decode() ([]schedule.Cell, *schedule.Meta, error) {
 	reader, err := pdf.NewReader(d.r, d.size)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	page := reader.Page(PageNum)
-	texts := page.Content().Text
-	chunks := make([]Chunk, len(texts))
-
-	for i, text := range texts {
-		chunks[i] = Chunk{
-			Data: text.S,
-			X:    int(text.X),
-			Y:    int(text.Y),
-		}
-	}
+	page := reader.Page(PdfPageNum)
+	chunks := page.Content().Text
 
 	// Decode meta.
-	meta, size := decodeMeta(chunks)
+	meta, size := d.decodeMeta(chunks)
 	chunks = chunks[size:]
 
 	// Decode cells.
 	cells := make([]schedule.Cell, 0)
 	for len(chunks) > 0 {
-		cell, size := decodeCell(chunks)
+		cell, size := d.decodeCell(chunks)
 		cells = append(cells, cell)
 		chunks = chunks[size:]
 	}
