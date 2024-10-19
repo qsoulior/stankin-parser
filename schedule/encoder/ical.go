@@ -54,9 +54,14 @@ func (e *icalEncoder) encodeEvent(event schedule.Event) {
 
 	fmt.Fprintf(e.w, "UID:%s\n", uuid.New())
 	fmt.Fprintf(e.w, "DTSTAMP:%s\n", time.Now().UTC().Format(icalLayoutUTC))
-	fmt.Fprintf(e.w, "SUMMARY:%s\n", event.Title)
 	fmt.Fprintf(e.w, "LOCATION:%s\n", event.Location)
 	fmt.Fprintf(e.w, "TRANSP:%s\n", icalTransparent)
+
+	fmt.Fprint(e.w, "SUMMARY:")
+	if event.Subgroup != "" {
+		fmt.Fprintf(e.w, "[%s] ", event.Subgroup)
+	}
+	fmt.Fprintf(e.w, "%s\n", event.Title)
 
 	fmt.Fprintf(e.w, "DESCRIPTION:%s [%s", event.Teacher, event.Type)
 	if event.Subgroup != "" {

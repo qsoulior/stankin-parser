@@ -8,7 +8,7 @@ import (
 	"github.com/qsoulior/stankin-parser/schedule"
 )
 
-const PdfPageNum = 1
+const pdfPageNum = 1
 
 type pdfDecoder struct {
 	r    io.ReaderAt
@@ -78,7 +78,7 @@ func (d *pdfDecoder) Decode() ([]schedule.Cell, *schedule.Meta, error) {
 		return nil, nil, err
 	}
 
-	page := reader.Page(PdfPageNum)
+	page := reader.Page(pdfPageNum)
 	chunks := page.Content().Text
 
 	// Decode meta.
