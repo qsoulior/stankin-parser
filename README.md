@@ -1,6 +1,5 @@
 # stankin-parser
-[![Go Version](https://img.shields.io/github/go-mod/go-version/qsoulior/stankin-parser?style=flat-square)](https://go.dev/doc/go1.22)
-[![Go Report Card](https://goreportcard.com/badge/github.com/qsoulior/stankin-parser?style=flat-square)](https://goreportcard.com/report/github.com/qsoulior/stankin-parser)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/qsoulior/stankin-parser?style=flat-square)](https://go.dev/doc/go1.23)
 
 stankin-parser is CLI utility to parse stankin schedules and convert them to json or ical formats.
 
