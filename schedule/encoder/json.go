@@ -11,8 +11,11 @@ type jsonEncoder struct {
 	w io.Writer
 }
 
+// NewJSON creates and returns new json encoder.
 func NewJSON(w io.Writer) Encoder { return &jsonEncoder{w} }
 
+// Encode encodes schedule events and group into json format.
+// It uses subgroup to filter events.
 func (e *jsonEncoder) Encode(events []schedule.Event, group string, subgroup schedule.EventSubgroup) error {
 	enc := json.NewEncoder(e.w)
 

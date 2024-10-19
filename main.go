@@ -13,7 +13,7 @@ import (
 	"github.com/qsoulior/stankin-parser/schedule/encoder"
 )
 
-func decode() ([]schedule.Cell, *schedule.Meta, error) {
+func decode() ([]schedule.Unit, *schedule.Meta, error) {
 	reader, err := os.Open(input)
 	if err != nil {
 		return nil, nil, err
@@ -26,12 +26,12 @@ func decode() ([]schedule.Cell, *schedule.Meta, error) {
 	}
 
 	decoder := decoder.NewPDF(reader, stat.Size())
-	cells, meta, err := decoder.Decode()
+	units, meta, err := decoder.Decode()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return cells, meta, nil
+	return units, meta, nil
 }
 
 func getEncoder(format string, w io.Writer) (encoder.Encoder, error) {
@@ -89,17 +89,17 @@ func main() {
 	}
 
 	// decode
-	cells, meta, err := decode()
+	units, meta, err := decode()
 	if err != nil {
 		log.Fatalf("failed to decode: %s", err)
 	}
 
 	log.Printf("schedule decoded from %s\n", input)
 	log.Printf("name of decoded group: %s\n", meta.Group)
-	log.Printf("number of decoded cells: %d\n", len(cells))
+	log.Printf("number of decoded units: %d\n", len(units))
 
 	// parse
-	events, err := schedule.Parse(cells, year)
+	events, err := schedule.Parse(units, year)
 	if err != nil {
 		log.Fatalf("failed to parse: %s", err)
 	}
@@ -112,5 +112,5 @@ func main() {
 		log.Fatalf("failed to encode: %s", err)
 	}
 
-	log.Printf("schedule encoded to %s\n", output)
+	log.Printf("schedule encoded into %s\n", output)
 }

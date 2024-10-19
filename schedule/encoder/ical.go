@@ -25,8 +25,11 @@ type icalEncoder struct {
 	w io.Writer
 }
 
+// NewIcal creates and returns new ical encoder.
 func NewIcal(w io.Writer) Encoder { return &icalEncoder{w} }
 
+// Encode encodes schedule events and group into ical format.
+// It uses subgroup to filter events.
 func (e *icalEncoder) Encode(events []schedule.Event, group string, subgroup schedule.EventSubgroup) error {
 	fmt.Fprint(e.w, "BEGIN:VCALENDAR\n")
 

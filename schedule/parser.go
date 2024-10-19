@@ -131,7 +131,7 @@ func parseDate(data string, year int, t EventTime) ([]EventDate, error) {
 	return []EventDate{date}, nil
 }
 
-func parse(cell Cell, year int) (Event, error) {
+func parse(unit Unit, year int) (Event, error) {
 	var event Event
 
 	// Parse type.
@@ -139,21 +139,21 @@ func parse(cell Cell, year int) (Event, error) {
 		fmt.Sprintf(` (%s|%s|%s)\. `, EventTypeLecture, EventTypeSeminar, EventTypeLab),
 	)
 
-	loc := re.FindStringSubmatchIndex(cell.Data)
+	loc := re.FindStringSubmatchIndex(unit.Data)
 	if len(loc) < 4 {
 		return event, ErrEventTypeNotFound
 	}
 
-	event.Type = EventType(cell.Data[loc[2]:loc[3]])
+	event.Type = EventType(unit.Data[loc[2]:loc[3]])
 
 	// "<title>" OR "<title>", "<teacher>"
-	prefix := strings.Split(cell.Data[:loc[0]], ". ")
+	prefix := strings.Split(unit.Data[:loc[0]], ". ")
 	if n := len(prefix); n < 1 || n > 2 {
 		return event, ErrEventInvalid
 	}
 
 	// "<location>", "[<date>]" OR "(<subgroup>)", "<location>", "[<date>, <date>]"
-	suffix := strings.Split(cell.Data[loc[1]:], ". ")
+	suffix := strings.Split(unit.Data[loc[1]:], ". ")
 	if n := len(suffix); n < 2 || n > 3 {
 		return event, ErrEventInvalid
 	}
@@ -167,7 +167,7 @@ func parse(cell Cell, year int) (Event, error) {
 	}
 
 	// Parse time.
-	time, err := parseTime(cell.Left, cell.Right)
+	time, err := parseTime(unit.Left, unit.Right)
 	if err != nil {
 		return event, err
 	}
@@ -193,13 +193,14 @@ func parse(cell Cell, year int) (Event, error) {
 	return event, nil
 }
 
-// cells + year -> events
-func Parse(cells []Cell, year int) ([]Event, error) {
+// Parse schedule units and returns events.
+// Since any unit does not contain year of event, it is accepted as required argument.
+func Parse(units []Unit, year int) ([]Event, error) {
 	var err error
 
-	events := make([]Event, len(cells))
-	for i, cell := range cells {
-		events[i], err = parse(cell, year)
+	events := make([]Event, len(units))
+	for i, unit := range units {
+		events[i], err = parse(unit, year)
 		if err != nil {
 			return nil, err
 		}
