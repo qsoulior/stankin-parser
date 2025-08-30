@@ -9,9 +9,9 @@ import (
 type EventType string
 
 const (
-	EventTypeLecture EventType = "лекции"
-	EventTypeSeminar EventType = "семинар"
-	EventTypeLab     EventType = "лабораторные занятия"
+	EventTypeLecture EventType = "Лекция"
+	EventTypeSeminar EventType = "Семинар"
+	EventTypeLab     EventType = "Лабораторная"
 )
 
 // EventSubgroup represents a subgroup related to schedule event.
