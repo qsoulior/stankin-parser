@@ -89,10 +89,11 @@ func (e *icalEncoder) encodeEvent(event schedule.Event) {
 
 	dates := make([]string, len(event.Dates))
 	for i, date := range event.Dates {
-		dates[i] = date.Start.UTC().Format(icalLayoutDatetimeUTC)
+		dates[i] = date.Start.Format(icalLayoutDatetime)
 	}
 
-	fmt.Fprintf(e.w, "RDATE:%s\r\n", strings.Join(dates, ","))
+	fmt.Fprintf(e.w, "RDATE;TZID=%s:%s\r\n",
+		icalTimezoneID, strings.Join(dates, ","))
 
 	fmt.Fprint(e.w, "END:VEVENT")
 }
