@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/qsoulior/stankin-parser/schedule"
-	"github.com/qsoulior/stankin-parser/schedule/decoder"
+	pdf_decoder "github.com/qsoulior/stankin-parser/schedule/decoder/pdf"
 	"github.com/qsoulior/stankin-parser/schedule/encoder"
+	ical_encoder "github.com/qsoulior/stankin-parser/schedule/encoder/ical"
+	json_encoder "github.com/qsoulior/stankin-parser/schedule/encoder/json"
 )
 
 func decode() ([]schedule.Unit, *schedule.Meta, error) {
@@ -18,14 +20,14 @@ func decode() ([]schedule.Unit, *schedule.Meta, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	stat, err := reader.Stat()
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 
-	decoder := decoder.NewPDF(reader, stat.Size())
+	decoder := pdf_decoder.New(reader, stat.Size())
 	units, meta, err := decoder.Decode()
 	if err != nil {
 		return nil, nil, err
@@ -37,9 +39,9 @@ func decode() ([]schedule.Unit, *schedule.Meta, error) {
 func getEncoder(format string, w io.Writer) (encoder.Encoder, error) {
 	switch format {
 	case "ical":
-		return encoder.NewIcal(w), nil
+		return ical_encoder.New(w), nil
 	case "json":
-		return encoder.NewJSON(w), nil
+		return json_encoder.New(w), nil
 	default:
 		return nil, errors.New("invalid encoding format")
 	}
@@ -50,7 +52,7 @@ func encode(events []schedule.Event, group string) error {
 	if err != nil {
 		return err
 	}
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 
 	encoder, err := getEncoder(format, writer)
 	if err != nil {

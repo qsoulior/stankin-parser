@@ -22,24 +22,26 @@ const (
 	EventSubgroupB EventSubgroup = "Б"
 )
 
-// EventTime represents time in nanoseconds for start and end of schedule event.
+// EventTime represents time for start and end of schedule event.
 type EventTime struct {
-	Start time.Duration `json:"start"`
-	End   time.Duration `json:"end"`
+	Start time.Time
+	End   time.Time
 }
 
 // EventDate represents start and end dates of schedule event.
 type EventDate struct {
-	Start time.Time `json:"start"`
-	End   time.Time `json:"end"`
+	Start    time.Time
+	End      time.Time
+	Interval int
 }
 
 // Event represents entity of schedule event.
 type Event struct {
-	Title    string        `json:"title"`
-	Teacher  string        `json:"teacher"`
-	Type     EventType     `json:"type"`
-	Subgroup EventSubgroup `json:"subgroup"`
-	Location string        `json:"location"`
-	Dates    []EventDate   `json:"dates"`
+	Title    string
+	Teacher  string
+	Type     EventType
+	Subgroup EventSubgroup
+	Location string
+	Time     EventTime
+	Dates    []EventDate
 }

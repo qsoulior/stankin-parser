@@ -8,56 +8,60 @@ import (
 	"time"
 )
 
+var location = time.FixedZone("UTC+3", 3*60*60)
+
 var (
-	ErrEventInvalid          = errors.New("event is invalid")
-	ErrEventTypeNotFound     = errors.New("event type is not found")
-	ErrEventDateInvalid      = errors.New("event date is invalid")
-	ErrEventFrequencyInvalid = errors.New("event frequency is invalid")
+	ErrEventInvalid         = errors.New("event is invalid")
+	ErrEventTypeNotFound    = errors.New("event type is not found")
+	ErrEventDateInvalid     = errors.New("event date is invalid")
+	ErrEventIntervalInvalid = errors.New("event interval is invalid")
+	ErrEventStartInvalid    = errors.New("event start is invalid")
+	ErrEventEndInvalid      = errors.New("event end is invalid")
 )
 
-func parseTimeStart(pos int) (time.Duration, error) {
+func parseTimeStart(pos int) (time.Time, error) {
 	switch {
 	case pos >= 701:
-		return 21*time.Hour + 20*time.Minute, nil
+		return time.Date(0, 0, 0, 21, 20, 0, 0, location), nil
 	case pos >= 607:
-		return 19*time.Hour + 40*time.Minute, nil
+		return time.Date(0, 0, 0, 19, 40, 0, 0, location), nil
 	case pos >= 514:
-		return 18 * time.Hour, nil
+		return time.Date(0, 0, 0, 18, 00, 0, 0, location), nil
 	case pos >= 420:
-		return 16 * time.Hour, nil
+		return time.Date(0, 0, 0, 16, 00, 0, 0, location), nil
 	case pos >= 327:
-		return 14*time.Hour + 10*time.Minute, nil
+		return time.Date(0, 0, 0, 14, 10, 0, 0, location), nil
 	case pos >= 233:
-		return 12*time.Hour + 20*time.Minute, nil
+		return time.Date(0, 0, 0, 12, 20, 0, 0, location), nil
 	case pos >= 139:
-		return 10*time.Hour + 20*time.Minute, nil
+		return time.Date(0, 0, 0, 10, 20, 0, 0, location), nil
 	case pos >= 46:
-		return 8*time.Hour + 30*time.Minute, nil
+		return time.Date(0, 0, 0, 8, 30, 0, 0, location), nil
 	default:
-		return 0, errors.New("event start is invalid")
+		return time.Time{}, ErrEventStartInvalid
 	}
 }
 
-func parseTimeEnd(pos int) (time.Duration, error) {
+func parseTimeEnd(pos int) (time.Time, error) {
 	switch {
 	case pos < 46:
-		return 0, errors.New("event end is invalid")
+		return time.Time{}, ErrEventEndInvalid
 	case pos < 139:
-		return 10*time.Hour + 10*time.Minute, nil
+		return time.Date(0, 0, 0, 10, 10, 0, 0, location), nil
 	case pos < 233:
-		return 12 * time.Hour, nil
+		return time.Date(0, 0, 0, 12, 0, 0, 0, location), nil
 	case pos < 327:
-		return 14 * time.Hour, nil
+		return time.Date(0, 0, 0, 14, 0, 0, 0, location), nil
 	case pos < 420:
-		return 15*time.Hour + 50*time.Minute, nil
+		return time.Date(0, 0, 0, 15, 50, 0, 0, location), nil
 	case pos < 514:
-		return 17*time.Hour + 40*time.Minute, nil
+		return time.Date(0, 0, 0, 17, 40, 0, 0, location), nil
 	case pos < 607:
-		return 19*time.Hour + 30*time.Minute, nil
+		return time.Date(0, 0, 0, 19, 30, 0, 0, location), nil
 	case pos < 701:
-		return 21*time.Hour + 10*time.Minute, nil
+		return time.Date(0, 0, 0, 21, 10, 0, 0, location), nil
 	default:
-		return 22*time.Hour + 50*time.Minute, nil
+		return time.Date(0, 0, 0, 22, 50, 0, 0, location), nil
 	}
 }
 
@@ -80,55 +84,52 @@ func parseTime(left, right int) (EventTime, error) {
 
 const dateLayout = "02.01"
 
-var dateLocation = time.FixedZone("UTC+3", 3*60*60)
-
-var dateWeeks = map[string]int{
+var dateIntervals = map[string]int{
 	"":     0,
 	"к.н.": 1,
 	"ч.н.": 2,
 }
 
-func parseDate(data string, year int, t EventTime) ([]EventDate, error) {
+func parseDate(data string, year int) (EventDate, error) {
 	parts := make([]string, 3)
 	copy(parts, strings.FieldsFunc(data, func(r rune) bool {
 		return r == '-' || r == ' '
 	}))
 
-	weeks, ok := dateWeeks[parts[2]]
+	interval, ok := dateIntervals[parts[2]]
 	if !ok {
-		return nil, ErrEventFrequencyInvalid
+		return EventDate{}, ErrEventIntervalInvalid
 	}
 
-	start, err := time.ParseInLocation(dateLayout, parts[0], dateLocation)
+	start, err := time.ParseInLocation(dateLayout, parts[0], location)
 	if err != nil {
-		return nil, ErrEventDateInvalid
+		return EventDate{}, ErrEventDateInvalid
 	}
 	start = start.AddDate(year, 0, 0)
 
-	if weeks > 0 {
-		end, err := time.ParseInLocation(dateLayout, parts[1], dateLocation)
-		if err != nil {
-			return nil, ErrEventDateInvalid
-		}
-		end = end.AddDate(year, 0, 0)
-
-		dates := make([]EventDate, 0)
-		for date := start; !date.After(end); date = date.AddDate(0, 0, 7*weeks) {
-			dates = append(dates, EventDate{
-				Start: date.Add(t.Start),
-				End:   date.Add(t.End)},
-			)
+	if interval == 0 {
+		date := EventDate{
+			Start:    start,
+			End:      start,
+			Interval: 0,
 		}
 
-		return dates, nil
+		return date, nil
 	}
+
+	end, err := time.ParseInLocation(dateLayout, parts[1], location)
+	if err != nil {
+		return EventDate{}, ErrEventDateInvalid
+	}
+	end = end.AddDate(year, 0, 0)
 
 	date := EventDate{
-		Start: start.Add(t.Start),
-		End:   start.Add(t.End),
+		Start:    start,
+		End:      end,
+		Interval: interval,
 	}
 
-	return []EventDate{date}, nil
+	return date, nil
 }
 
 func parse(unit Unit, year int) (Event, error) {
@@ -171,15 +172,16 @@ func parse(unit Unit, year int) (Event, error) {
 	if err != nil {
 		return event, err
 	}
+	event.Time = time
 
 	// Parse dates.
 	parts := strings.Split(strings.Trim(suffix[len(suffix)-1], "[]"), ", ")
 	for _, part := range parts {
-		dates, err := parseDate(part, year, time)
+		date, err := parseDate(part, year)
 		if err != nil {
 			return event, err
 		}
-		event.Dates = append(event.Dates, dates...)
+		event.Dates = append(event.Dates, date)
 	}
 
 	// Parse subgroup and location.

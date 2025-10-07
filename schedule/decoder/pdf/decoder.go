@@ -1,4 +1,4 @@
-package decoder
+package pdf_decoder
 
 import (
 	"io"
@@ -10,17 +10,17 @@ import (
 
 const pdfPageNum = 1
 
-type pdfDecoder struct {
+type Decoder struct {
 	r    io.ReaderAt
 	size int64
 }
 
-// NewPDF creates and returns new pdf decoder.
-func NewPDF(r io.ReaderAt, size int64) *pdfDecoder {
-	return &pdfDecoder{r, size}
+// New creates and returns new pdf decoder.
+func New(r io.ReaderAt, size int64) *Decoder {
+	return &Decoder{r, size}
 }
 
-func (d *pdfDecoder) decodeMeta(chunks []pdf.Text) (*schedule.Meta, int) {
+func (d *Decoder) decodeMeta(chunks []pdf.Text) (*schedule.Meta, int) {
 	i := 1
 	for chunks[i].Y == chunks[i-1].Y && i < len(chunks) {
 		i++
@@ -43,7 +43,7 @@ func (d *pdfDecoder) decodeMeta(chunks []pdf.Text) (*schedule.Meta, int) {
 	return &meta, i
 }
 
-func (d *pdfDecoder) decodeUnit(chunks []pdf.Text) (schedule.Unit, int) {
+func (d *Decoder) decodeUnit(chunks []pdf.Text) (schedule.Unit, int) {
 	var data strings.Builder
 	data.Grow(len(chunks[0].S))
 	data.WriteString(chunks[0].S)
@@ -75,7 +75,7 @@ func (d *pdfDecoder) decodeUnit(chunks []pdf.Text) (schedule.Unit, int) {
 
 // Decode decodes schedule units and metadata and returns them.
 // It uses [io.ReaderAt] as source of input data.
-func (d *pdfDecoder) Decode() ([]schedule.Unit, *schedule.Meta, error) {
+func (d *Decoder) Decode() ([]schedule.Unit, *schedule.Meta, error) {
 	reader, err := pdf.NewReader(d.r, d.size)
 	if err != nil {
 		return nil, nil, err
